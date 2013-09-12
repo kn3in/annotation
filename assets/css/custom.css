@@ -1,0 +1,17 @@
+p, li {
+  text-align: justify;
+  font-family: "Open Sans";
+}
+
+pre code {
+  font-size: 12px;
+}
+
+code {
+  color: darkred;
+}
+
+h1 {
+  font-family: "Open Sans Condensed", sanserif;
+  color: darkslategray;
+}

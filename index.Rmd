@@ -1,0 +1,230 @@
+---
+title: Annotation
+subtitle: Functional annotation and more 
+author: Konstantin Shakhbazov
+github: {user: kn3in, repo: nothereyet, branch: "gh-pages"}
+framework: minimal
+mode: selfcontained
+widgets: [polycharts]
+highlighter: highlight.js
+hitheme: solarized_light
+assets:
+  css: 
+    - "http://fonts.googleapis.com/css?family=Open+Sans"
+    - "http://fonts.googleapis.com/css?family=Open+Sans+Condensed:700"
+---
+
+```{r echo = F, message = F, cache = F, comment = NA, warning = FALSE}
+library(knitr)
+opts_chunk$set(results = 'asis', comment = NA, message = F, tidy = FALSE)
+options(knitr.table.format = 'html')
+```
+
+# Intro
+We consider various mapping/relationship between gene, SNP, pathway etc and other biological annotations in order to get a biological insight, whatever it may mean in your particular experiment.
+
+- - -
+
+# Genome Browsers and alike
+Easiest way to annotate a small list of genes, SNPs, microarray probes etc is to query various web
+based interfaces often provided within genome browsers. Also useful when you need quick sanity check of your annotation scripts.
+
+General interfaces
+* [UCSC genome browser][]
+    * [UCSC table browser][]
+    * [ENCODE at UCSC][]
+* [Ensembl genome browser](http://www.ensembl.org/Homo_sapiens/Info/Index)
+    * [ENCODE at Ensembl][]
+* [NCBI](http://www.ncbi.nlm.nih.gov/)
+    * [GTEx eQTL browser](http://www.ncbi.nlm.nih.gov/gtex/GTEX2/gtex.cgi)
+    * [NCBI Gene P53 example](http://www.ncbi.nlm.nih.gov/gene/7157)
+    * [NCBI SNP rs4783244 example][]
+* [Biomart][]
+* [Gencode][] `human transcriptome annotation; here for the sake of completeness, part of the ENCODE project. Available as a track in the UCSC browser`
+
+[UCSC genome browser]: http://genome.ucsc.edu/cgi-bin/hgGateway
+[UCSC table browser]: http://genome.ucsc.edu/cgi-bin/hgTables?command=start
+[ENCODE at UCSC]: http://genome.ucsc.edu/ENCODE/
+[ENCODE at Ensembl]: http://www.ensembl.org/info/website/tutorials/encode.html
+[Gencode]: http://www.gencodegenes.org/
+[NCBI SNP rs4783244 example]: http://www.ncbi.nlm.nih.gov/projects/SNP/snp_ref.cgi?rs=4783244
+[Gemini]: http://gemini.readthedocs.org/en/latest/index.html
+[Browser interface]: http://gemini.readthedocs.org/en/latest/content/browser.html
+[Biomart]: http://biomart.org/
+
+SNP
+* [Haploreg2](http://www.broadinstitute.org/mammals/haploreg/haploreg.php)
+* [Gemini][] `standalone tool`
+    * [Browser interface][]
+    * [How to use plink files with gemini][]
+
+[How to use plink files with gemini]: http://gemini.readthedocs.org/en/latest/content/faq.html#how-can-i-use-plink-files-with-gemini
+
+Gene Expression
+* [BioGPS](http://biogps.org/ "Tissue specific expression")
+
+Pathway Analysis
+* [DAVID](http://david.abcc.ncifcrf.gov/ "aka Dreaded pathway analysis")
+
+Biomart, UCSC, Ensembl and NCBI integrate broad spectrum of data within a unified interface, on the other hand there are plenty of annotation tools addressing particular needs e.g. eQTL browsers, miRNA and lincRNA databases not(yet) mentioned here.
+
+- - -
+# Biomart
+from [www.biomart.org](http://www.biomart.org)
+>BioMart is a freely available, open source, federated database system that provides unified access to disparate, geographically distributed
+>data sources. It is designed to be data agnostic and platform independent, such that existing databases can easily be incorporated into the
+>BioMart framework.
+
+Ensembl is one of the databases available through Biomart. There are numerous APIs to access Ensembl programmatically. We're going to use R/Bioconductor interface which unlike other APIs allows access entire Biomart.
+
+Ensembl/Biomart APIs:
+* web interface [Mart view][]
+* R/Bioconductor [biomaRt](http://www.bioconductor.org/packages/release/bioc/html/biomaRt.html)
+* python: [Pycogent](http://pycogent.org/cookbook/accessing_databases.html#ensembl) `does much more than just querying Ensembl, please look through the documentation`
+* ruby: [ruby-ensembl-api](https://github.com/jandot/ruby-ensembl-api)
+* perl: [Perl API](http://www.ensembl.org/info/docs/api/index.html)
+* language agnostic beta [REST API](http://beta.rest.ensemblgenomes.org/documentation/user_guide)
+
+[Mart view]: http://www.ensembl.org/biomart/martview/
+
+It is instructive to retrieve some
+data using the `highest` level web-interface and the `lowest` MySQL level to see that after all
+there is no magic. The rest of APIs provide nice in-between level in your preferred language which
+hides all particularities of db schema but allows you to deal with the annotation programmatically.
+
+#### Web interface a.k.a. build a query by selecting drop-down menus.
+Hopefully this is self explanatory:
+
+0. Go to  [Mart view][]
+1. CHOOSE DATABASE: Ensembl Variation 73
+2. CHOOSE DATASET: Homo Sapience Short Variation
+3. Filters: GENERAL VARIATION FILTERS: Filter by Variation Name: 
+ - rs7775397
+ - rs4783244
+ - rs6450176
+4. Attributes: SEQUENCE VARIATION: Variation Name, Minor allele (ALL), 1000 genomes global MAF (ALL)
+5. Results
+
+By the same token one can build a query via Biomart:
+[result](http://central.biomart.org/martwizard/#!/Genome?mart=Ensembl+72+Short+Variations+\(SNPs+and+indels\)&datasets=hsapiens_snp&step=4&variation_source=dbSNP&snp_filter=rs7775397%2Crs4783244%2Crs6450176&attributes=refsnp_id%2Cchrom_start%2Cchr_name%2Cminor_allele%2Cminor_allele_freq)
+
+
+#### Direct MySQL query
+Query MySQL backend (not recommended, plus no sequence retrieval; schema available [here](http://www.ensembl.org/info/docs/api/index.html))
+
+```{r, engine = "bash", results = 'markup'}
+mysql --host=ensembldb.ensembl.org -P 3306  --user=anonymous \
+-A -e "SELECT v.name, v.minor_allele, v.minor_allele_freq \
+FROM variation v WHERE v.name IN ('rs7775397', 'rs4783244', 'rs6450176');" \
+homo_sapiens_variation_73_37
+```
+
+#### Note
+
+Before we go into discovering lots of goodies in the [Bioconductor](http://www.bioconductor.org) project. Bioconductor [conference and tutorial](http://www.bioconductor.org/help/events/) materials
+are available [here](http://www.bioconductor.org/help/course-materials/). Each package in the project has a vignette which is worth checking.
+Bioconductor also have workflows section describing particular usage of the project e.g. [Using bioconductor for annotation.](http://www.bioconductor.org/help/workflows/annotation/annotation/)
+
+#### biomaRt
+
+```{r}
+library(biomaRt)
+```
+
+### Available marts
+Contrast ensembl versions available through web/MySQL interfaces and biomaRt.
+```{r}
+kable(head(listMarts()))
+```
+
+### Available datasets
+
+Select `snp` mart and see which datasets are available for the mart.
+
+```{r}
+mart <- useMart("snp")
+kable(head(listDatasets(mart)))
+```
+
+Select dataset with human snps `hsapiens_snp`.
+```{r}
+snpmart <- useDataset("hsapiens_snp", mart = mart)
+```
+
+Shortcut in case you know which mart and dataset you are after:
+```{r}
+snpmart <- useMart("snp", dataset = "hsapiens_snp")
+```
+### Attributes and Filters
+
+A dataset queried on a set of fields: `Attributes` i.e. the desired output.
+A query narrowed based on a set of fields: `Filters`.
+
+Here are `Attributes` for the hsapiens_snp dataset of the snp mart.
+```{r}
+kable(head(listAttributes(snpmart)))
+```
+
+Here are the `Filters`
+```{r}
+kable(head(listFilters(snpmart)))
+```
+
+Example query:
+Suppose we have a list of rs SNP ids (`Filter`, we want only data for those rs ids) and would like to figure out where those SNPs located, their minor alleles and MAFs (`Attributes`, we need only those fields returned from biomart). The `getBM` is the main function to query Biomart. We have already seen first four arguments: `attributes`, `filters`, `value` (of the filters) and `mart`.
+
+```{r}
+?getBM
+```
+
+```{r}
+top_ids <- c("rs7775397", "rs4783244", "rs6450176")
+snp_pos <- getBM(attributes = c("refsnp_id", "chr_name", "chrom_start",
+                                 "minor_allele", "minor_allele_freq"),
+                    filters = c("snp_filter"),
+                      value = top_ids,
+                       mart = snpmart)
+kable(snp_pos)
+```
+
+#### All together
+
+```r
+library(biomaRt)
+snpmart <- useDataset("hsapiens_snp", mart = mart)
+top_ids <- c("rs7775397", "rs4783244", "rs6450176")
+snp_pos <- getBM(attributes = c("refsnp_id", "chr_name", "chrom_start",
+                                 "minor_allele", "minor_allele_freq"),
+                    filters = c("snp_filter"),
+                      value = top_ids,
+                       mart = snpmart)
+```
+
+- - -
+# Full tables for biomaRt
+
+### Marts
+```{r}
+kable(listMarts())
+```
+### Datasets available for the snp mart
+```{r}
+kable(listDatasets(mart))
+```
+### Attributes for the snp mart, the hsapiens_snp dataset
+```{r}
+kable(listAttributes(snpmart))
+```
+### Filters for the snp mart, the hsapiens_snp dataset
+```{r}
+kable(listFilters(snpmart))
+```
+
+
+
+
+
+
+
+
+
