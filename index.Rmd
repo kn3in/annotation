@@ -191,7 +191,7 @@ kable(snp_pos)
 
 ```r
 library(biomaRt)
-snpmart <- useDataset("hsapiens_snp", mart = mart)
+snpmart <- useMart("snp", dataset = "hsapiens_snp")
 top_ids <- c("rs7775397", "rs4783244", "rs6450176")
 snp_pos <- getBM(attributes = c("refsnp_id", "chr_name", "chrom_start",
                                  "minor_allele", "minor_allele_freq"),
