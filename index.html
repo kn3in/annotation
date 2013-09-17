@@ -422,7 +422,7 @@ kable(snp_pos)
 <h4>All together</h4>
 
 <pre><code class="r">library(biomaRt)
-snpmart &lt;- useDataset(&quot;hsapiens_snp&quot;, mart = mart)
+snpmart &lt;- useMart(&quot;snp&quot;, dataset = &quot;hsapiens_snp&quot;)
 top_ids &lt;- c(&quot;rs7775397&quot;, &quot;rs4783244&quot;, &quot;rs6450176&quot;)
 snp_pos &lt;- getBM(attributes = c(&quot;refsnp_id&quot;, &quot;chr_name&quot;, &quot;chrom_start&quot;,
                                  &quot;minor_allele&quot;, &quot;minor_allele_freq&quot;),
