@@ -2,7 +2,7 @@
 title: Annotation
 subtitle: Functional annotation and more 
 author: Konstantin Shakhbazov
-github: {user: kn3in, repo: nothereyet, branch: "gh-pages"}
+github: {user: kn3in, repo: annotation, branch: "gh-pages"}
 framework: minimal
 mode: selfcontained
 widgets: [polycharts]
